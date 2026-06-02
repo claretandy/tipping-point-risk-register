@@ -1,7 +1,7 @@
 bokeh==3.6.3
 numpy==1.26.4
 pandas==2.2.3
-json==2.0.9
+json==2.0.0
 matplotlib==3.10.0
 # regionmask==0.13.0
 
