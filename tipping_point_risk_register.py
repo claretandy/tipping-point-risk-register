@@ -12,6 +12,7 @@ from bokeh.palettes import Category10, Category20
 from bokeh.models import LabelSet
 from bokeh.models import CDSView, BooleanFilter
 from bokeh.models.glyphs import Segment
+print('Before regionmask')
 import regionmask
 import json
 
