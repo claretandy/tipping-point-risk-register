@@ -113,11 +113,13 @@ palette = get_palette(n_colors)
 color_map = dict(zip(compare_factors, palette))
 
 # Use full names in dropdown
-region_options = [ipcc_region_lookup[code] for code in df["IPCC Region"].unique()]
+region_options = ["---"] + [ipcc_region_lookup[code] for code in df["IPCC Region"].unique()]
 initial_region_full = ipcc_region_lookup[initial_region]
 region_select = Select(title="IPCC Region", value=initial_region_full, options=region_options)
-tipping_select = Select(title="Tipping Element", value=initial_tipping, options=list(df["Tipping Element"].unique()))
-impact_select = Select(title="Impact Sector", value=initial_impact, options=list(df["Impact Sector"].unique()))
+tipping_options = ["---"] + list(df["Tipping Element"].unique())
+tipping_select = Select(title="Tipping Element", value=initial_tipping, options=tipping_options)
+impact_options = ["---"] + list(df["Impact Sector"].unique())
+impact_select = Select(title="Impact Sector", value=initial_impact, options=impact_options)
 compare_options = ["Impact Sector", "Tipping Element", "IPCC Region"]
 compare_select = Select(title="Compare by", value=initial_compare, options=compare_options)
 df["color"] = df[compare_select.value].map(color_map)
@@ -132,6 +134,8 @@ compare_to_widget = {
 # Disable the Select corresponding to the current compare_by
 for key, widget in compare_to_widget.items():
     widget.disabled = (key == initial_compare)
+    if key == initial_compare:
+        widget.value = "---"
 
 # def get_filtered_source(region, tipping, impact):
 #     compare_var = compare_select.value
@@ -156,11 +160,11 @@ def get_filtered_source(region, tipping, impact):
     # Map full name back to code for filtering
     region_code = {v: k for k, v in ipcc_region_lookup.items()}.get(region, region)
     mask = np.ones(len(df), dtype=bool)
-    if compare_var != "IPCC Region":
+    if compare_var != "IPCC Region" and region != "---":
         mask &= (df["IPCC Region"] == region_code)
-    if compare_var != "Tipping Element":
+    if compare_var != "Tipping Element" and tipping != "---":
         mask &= (df["Tipping Element"] == tipping)
-    if compare_var != "Impact Sector":
+    if compare_var != "Impact Sector" and impact != "---":
         mask &= (df["Impact Sector"] == impact)
     data = df.copy()
     data["visible"] = mask
@@ -221,7 +225,10 @@ def map_select_callback(attr, old, new):
             source.selected.indices = []
     else:
         source.selected.indices = []
-        region_select.value = initial_region_full
+        if compare_select.value == "IPCC Region":
+            region_select.value = "---"
+        else:
+            region_select.value = initial_region_full
 
 ar6.selected.on_change('indices', map_select_callback)
 
@@ -294,18 +301,20 @@ def update(attr, old, new):
     # Save current selection
     selected_indices = list(source.selected.indices)
     group_by = compare_select.value
-    # Disable the Select corresponding to the current compare_by
+    # Disable the Select corresponding to the current compare_by and set to "---"
     for key, widget in compare_to_widget.items():
         widget.disabled = (key == group_by)
+        if key == group_by:
+            widget.value = "---"
     # Get unique factors from the filtered data
     filtered_df = df.copy()
     compare_var = compare_select.value
     region_code = {v: k for k, v in ipcc_region_lookup.items()}.get(region_select.value, region_select.value)
-    if compare_var != "IPCC Region":
+    if compare_var != "IPCC Region" and region_select.value != "---":
         filtered_df = filtered_df[filtered_df["IPCC Region"] == region_code]
-    if compare_var != "Tipping Element":
+    if compare_var != "Tipping Element" and tipping_select.value != "---":
         filtered_df = filtered_df[filtered_df["Tipping Element"] == tipping_select.value]
-    if compare_var != "Impact Sector":
+    if compare_var != "Impact Sector" and impact_select.value != "---":
         filtered_df = filtered_df[filtered_df["Impact Sector"] == impact_select.value]
     factors = list(filtered_df[group_by].unique())
     pal = get_palette(len(factors))
