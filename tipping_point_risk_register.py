@@ -144,13 +144,22 @@ default_values = {
     "Impact Sector": initial_impact_full,
 }
 
-# Disable the Select corresponding to the current compare_by and set others to their defaults
-for key, widget in compare_to_widget.items():
-    widget.disabled = (key == initial_compare)
-    if key == initial_compare:
-        widget.value = "---"
-    else:
-        widget.value = default_values[key]
+# Preserve last explicit user choices even when a control is temporarily disabled.
+remembered_values = dict(default_values)
+
+def apply_compare_state():
+    group_by = compare_select.value
+    for key, widget in compare_to_widget.items():
+        is_compare = (key == group_by)
+        widget.disabled = is_compare
+        if is_compare:
+            widget.value = "---"
+        else:
+            widget.value = remembered_values[key]
+
+
+# Initialize controls from compare-by state
+apply_compare_state()
 
 # def get_filtered_source(region, tipping, impact):
 #     compare_var = compare_select.value
@@ -172,10 +181,12 @@ for key, widget in compare_to_widget.items():
 
 def get_filtered_source(region, tipping, impact):
     compare_var = compare_select.value
+    region_value = remembered_values["IPCC Region"] if region == "---" else region
     # Map full name back to code for filtering
-    region_code = {v: k for k, v in ipcc_region_lookup.items()}.get(region, region)
+    region_code = {v: k for k, v in ipcc_region_lookup.items()}.get(region_value, region_value)
     mask = np.ones(len(df), dtype=bool)
-    if compare_var != "IPCC Region" and region != "---":
+    # Always keep the plot aligned to the remembered/selected IPCC region.
+    if region_value != "---":
         mask &= (df["IPCC Region"] == region_code)
     if compare_var != "Tipping Element" and tipping != "---":
         mask &= (df["Tipping Element"] == tipping)
@@ -186,7 +197,7 @@ def get_filtered_source(region, tipping, impact):
     print(data["visible"].value_counts())
     return ColumnDataSource(data)
 
-source = get_filtered_source(initial_region_full, initial_tipping, initial_impact_full)
+source = get_filtered_source(region_select.value, tipping_select.value, impact_select.value)
 
 # Map figure of IPCC regions with selection capability
 
@@ -219,7 +230,7 @@ def map_select_callback(attr, old, new):
     # selected_index = ar6.selected['id']['indices']
     selected_index = ar6.selected.indices[0] if ar6.selected.indices else None
 
-    if selected_index:
+    if selected_index is not None:
         parsed_json = json.loads(ar6.geojson)
         features = parsed_json['features']
         # Get the selected feature
@@ -311,24 +322,18 @@ p.add_tools(BoxSelectTool())
 p.add_tools(LassoSelectTool())
 p.toolbar.active_drag = p.select_one(BoxSelectTool)
 
-def update(attr, old, new):
+def update_plot():
     global scatter, labels
     # Save current selection
     selected_indices = list(source.selected.indices)
     group_by = compare_select.value
-    # Disable the Select corresponding to the current compare_by and set to "---"
-    # Enable others and set to their default values
-    for key, widget in compare_to_widget.items():
-        widget.disabled = (key == group_by)
-        if key == group_by:
-            widget.value = "---"
-        else:
-            widget.value = default_values[key]
+    
     # Get unique factors from the filtered data
     filtered_df = df.copy()
     compare_var = compare_select.value
-    region_code = {v: k for k, v in ipcc_region_lookup.items()}.get(region_select.value, region_select.value)
-    if compare_var != "IPCC Region" and region_select.value != "---":
+    region_value = remembered_values["IPCC Region"] if region_select.value == "---" else region_select.value
+    region_code = {v: k for k, v in ipcc_region_lookup.items()}.get(region_value, region_value)
+    if region_value != "---":
         filtered_df = filtered_df[filtered_df["IPCC Region"] == region_code]
     if compare_var != "Tipping Element" and tipping_select.value != "---":
         filtered_df = filtered_df[filtered_df["Tipping Element"] == tipping_select.value]
@@ -416,6 +421,25 @@ def update(attr, old, new):
     # # Add updated legend to the right
     # p.add_layout(p.legend[0], 'right')
 
+
+def update_filter(attr, old, new):
+    if region_select.value != "---":
+        remembered_values["IPCC Region"] = region_select.value
+    if tipping_select.value != "---":
+        remembered_values["Tipping Element"] = tipping_select.value
+    if impact_select.value != "---":
+        remembered_values["Impact Sector"] = impact_select.value
+    update_plot()
+
+
+def update_compare_by(attr, old, new):
+    # Save active widget values before we hide one as "---".
+    for key, widget in compare_to_widget.items():
+        if widget.value != "---":
+            remembered_values[key] = widget.value
+    apply_compare_state()
+    update_plot()
+
 def scatter_select_callback(attr, old, new):
     # Get selected indices in scatterplot
     selected_indices = source.selected.indices
@@ -435,10 +459,10 @@ def scatter_select_callback(attr, old, new):
     ar6.selected.indices = map_indices
 
 source.selected.on_change("indices", scatter_select_callback)
-region_select.on_change("value", update)
-tipping_select.on_change("value", update)
-impact_select.on_change("value", update)
-compare_select.on_change("value", update)
+region_select.on_change("value", update_filter)
+tipping_select.on_change("value", update_filter)
+impact_select.on_change("value", update_filter)
+compare_select.on_change("value", update_compare_by)
 
 # Remove the default legend
 # p.legend.visible = False
