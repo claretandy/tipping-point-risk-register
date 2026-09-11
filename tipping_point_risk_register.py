@@ -228,8 +228,8 @@ ar6.selected.on_change('indices', map_select_callback)
 # Scatter plot figure ...
 p = figure(
     title="Global Warming Level vs Impact Severity",
-    x_axis_label="Impact Severity",
-    y_axis_label="Global Warming Level",
+    x_axis_label="Hazard Severity",
+    y_axis_label="Vulnerability + Exposure",
     width=800,
     height=600,
     x_range=(0, 1),
