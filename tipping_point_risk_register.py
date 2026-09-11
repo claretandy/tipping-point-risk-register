@@ -114,18 +114,12 @@ color_map = dict(zip(compare_factors, palette))
 
 # Use full names in dropdown
 region_options = ["---"] + [ipcc_region_lookup[code] for code in df["IPCC Region"].unique()]
-# Find "N Europe" in region options, fallback to first available
-initial_region_full = next((r for r in region_options[1:] if "N Europe" in r or "North" in r), region_options[1])
+initial_region_full = ipcc_region_lookup[initial_region]
 region_select = Select(title="IPCC Region", value=initial_region_full, options=region_options)
-
 tipping_options = ["---"] + list(df["Tipping Element"].unique())
 tipping_select = Select(title="Tipping Element", value=initial_tipping, options=tipping_options)
-
 impact_options = ["---"] + list(df["Impact Sector"].unique())
-# Find "Water Security" in impact options, fallback to first available
-initial_impact_full = next((i for i in impact_options[1:] if "Water" in i), impact_options[1])
-impact_select = Select(title="Impact Sector", value=initial_impact_full, options=impact_options)
-
+impact_select = Select(title="Impact Sector", value=initial_impact, options=impact_options)
 compare_options = ["Impact Sector", "Tipping Element", "IPCC Region"]
 compare_select = Select(title="Compare by", value=initial_compare, options=compare_options)
 df["color"] = df[compare_select.value].map(color_map)
@@ -137,20 +131,11 @@ compare_to_widget = {
     "Impact Sector": impact_select,
 }
 
-# Map default values for each category
-default_values = {
-    "IPCC Region": initial_region_full,
-    "Tipping Element": initial_tipping,
-    "Impact Sector": initial_impact_full,
-}
-
-# Disable the Select corresponding to the current compare_by and set others to their defaults
+# Disable the Select corresponding to the current compare_by
 for key, widget in compare_to_widget.items():
     widget.disabled = (key == initial_compare)
     if key == initial_compare:
         widget.value = "---"
-    else:
-        widget.value = default_values[key]
 
 # def get_filtered_source(region, tipping, impact):
 #     compare_var = compare_select.value
@@ -317,13 +302,10 @@ def update(attr, old, new):
     selected_indices = list(source.selected.indices)
     group_by = compare_select.value
     # Disable the Select corresponding to the current compare_by and set to "---"
-    # Enable others and set to their default values
     for key, widget in compare_to_widget.items():
         widget.disabled = (key == group_by)
         if key == group_by:
             widget.value = "---"
-        else:
-            widget.value = default_values[key]
     # Get unique factors from the filtered data
     filtered_df = df.copy()
     compare_var = compare_select.value
