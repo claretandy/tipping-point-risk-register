@@ -186,7 +186,7 @@ def get_filtered_source(region, tipping, impact):
     print(data["visible"].value_counts())
     return ColumnDataSource(data)
 
-source = get_filtered_source(initial_region_full, initial_tipping, initial_impact_full)
+source = get_filtered_source(initial_region, initial_tipping, initial_impact)
 
 # Map figure of IPCC regions with selection capability
 
